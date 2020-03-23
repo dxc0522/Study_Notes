@@ -48,6 +48,7 @@ class Spider(object):
         # 内容详情页操作
         page_list = etree.HTML(html.content.decode()).xpath(
             "//ul[@class='masonry']/li/@data-href")
+        pool = Pool(10)
         for href in page_list:
             if len(href) > 2:
                 try:
@@ -58,13 +59,15 @@ class Spider(object):
                     video_name = etree.HTML(item_response.content.decode()).xpath(
                         "//h1[@class='article-title']/a/text()")[0]
                     if not os.path.exists(path+video_name+".mp4"):
-                        self.blob_download(
-                            self.href+href, path, video_name+".mp4")
+                        # self.blob_download(self.href+href, path, video_name+".mp4")
                         # self.down_video(video_src,path+video_name+".mp4")
+                        pool.apply_async(self.down_video, (video_src,path+video_name+".mp4"))  # 执行任务
+                        
                         # self.you_get_download(self.href+href,path,video_name+".mp4")
                 except:
                     print("出错了")
-
+        pool.close()
+        pool.join()
     def down_video(self, video_src, video_name):
         # 常规存储方式
         # print(str(UserAgent().random))
@@ -127,15 +130,15 @@ class Spider(object):
                               headers=self.headers, timeout=10).content.decode().splitlines()
         res_ts = list(filter(is_ts, res_ts))
         # 创建进程池，执行10个任务
-        pool = Pool(10)
+        # pool = Pool(10)
         for i in res_ts:
-            # ts_download(i)
-            pool.apply_async(ts_download, (i,))  # 执行任务
-        pool.close()
-        pool.join()
+            ts_download(i)
+            # pool.apply_async(ts_download, (i,))  # 执行任务
+        # pool.close()
+        # pool.join()
         # 调用合并
-        print("调用合并")
-        time.sleep(5)
+        # print("调用合并")
+        # time.sleep(5)
         # return
         # os.popen("copy /b mp4\\*.ts mp4\\new.mp4")
         # print('ok！处理完成')

@@ -30,5 +30,6 @@ def merge(t,cmd):
 #     merge(5,"copy /b mp4\\*.ts mp4\\new.mp4")
 #     print('ok！处理完成')
 
-# path = "video\国产自拍\萝莉主播臭弟弟你要乖乖就给你看鲍鲍"
-os.popen("copy /b "+path+"\\*.ts mp4\\"+path+".mp4")
+path = "./video/国产自拍/萝莉主播臭弟弟你要乖乖就给你看鲍鲍"
+# os.popen("copy /b "+path+"\\*.ts mp4\\"+path+".mp4")
+os.popen("copy "+path+"/*.ts "+path+".mp4")
