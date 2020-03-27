@@ -1,5 +1,6 @@
 import threading
 from urllib.request import *
+import time
 
 
 class Download:
@@ -12,6 +13,11 @@ class Download:
         self.thread_num = thread_num
         # 初始化threads数组
         self.threads = []
+        # init proxies data
+        self.proxies = {
+            "http": "http://10.10.1.10:3128",
+            "https": "http://10.10.1.10:1080",
+        }
 
     def download(self):
         req = Request(url=self.link, method='GET')
@@ -42,9 +48,10 @@ class Download:
             sum_size += self.threads[i].length
         return sum_size / self.file_size
 
+
 class ThreadDownload(threading.Thread):
     def __init__(self, link, start_pos, current_part_size, current_part):
-        super().__init__() 
+        super().__init__()
         # 下载路径
         self.link = link
         # 当前线程的下载位置
@@ -55,9 +62,9 @@ class ThreadDownload(threading.Thread):
         self.current_part = current_part
         # 定义该线程已经下载的字节数
         self.length = 0
-    
+
     def run(self):
-        req = Request(url = self.link, method='GET')
+        req = Request(url=self.link, method='GET')
         req.add_header('Accept', '*/*')
         req.add_header('Charset', 'UTF-8')
         req.add_header('Connection', 'Keep-Alive')
@@ -76,3 +83,10 @@ class ThreadDownload(threading.Thread):
             self.length += len(data)
         self.current_part.close()
         f.close()
+
+
+def show_process(dl):
+    while dl.get_complete_rate() < 1:
+        complete_rate = int(dl.get_complete_rate()*100)
+        print('\r' + '下载中···（已下载' + str(complete_rate) + '%）', end='', flush=True)
+        time.sleep(0.01)

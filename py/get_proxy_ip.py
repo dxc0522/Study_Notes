@@ -21,21 +21,22 @@ class get_proxy_ip:
                     try:
                         item_ip = html_item.xpath(".//td[@data-title='IP']/text()")
                         item_port = html_item.xpath(".//td[@data-title='PORT']/text()")
+                        item_type = html_item.xpath(".//td[@data-title='类型']/text()")
                     except IOError:
                         item_ip = html_item.xpath(".//td[0]/text()")
                         item_port = html_item.xpath(".//td[1]/text()")
                     
                         
-                    self.test_ip(item_ip[0], item_port[0])
+                    self.test_ip(item_ip[0], item_port[0],item_type[0].lower())
 
-    def test_ip(self, ip, port):
+    def test_ip(self, ip, port,type):
         try:
             telnetlib.Telnet(ip, port, timeout=2)
             f=open('有效ip.txt','r',encoding='utf-8').read()
             if ip not in f:
                 print("代理ip有效！",ip)
                 with open('有效ip.txt','a') as file_handle:   # .txt可以不自己新建,代码会自动新建
-                    file_handle.write(ip+" "+port)     # 写入
+                    file_handle.write(type+"://"+ip+":"+port)     # 写入
                     file_handle.write('\n')         # 有时放在循环里面需要自动转行，不然会覆盖上一条数据
             else :
                 print("已存在！")
