@@ -1,47 +1,107 @@
-import telnetlib
 import requests
 from lxml import etree
-import os
+import time
+from multiprocessing import Pool
+import multiprocessing
+import sys
 from fake_useragent import UserAgent
 
+ua = UserAgent()
 
-class get_proxy_ip:
-    def __init__(self):
-        self.url = ["https://www.kuaidaili.com/free/inha/",
-                    "https://www.xicidaili.com/nn/"]
-        self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36",
-        }
+get_proxy_arr = [
+    {
+        'name': "kuaidaili",
+        'url': "https://www.kuaidaili.com/free/inha/"
+    },
+    {
+        'name': "xicidaili",
+        'url': "https://www.xicidaili.com/nn/"
+    },
+]
+headers = {
+    "user-agent": ua.random,
+}
+ip_list = []
 
-    def start_request(self):
-        for item in self.url:
-            for index in range(1, 100):
-                response = etree.HTML(requests.get(item+str(index), headers = self.headers).content.decode()).xpath("//tbody/tr")
-                for html_item in response:
-                    try:
-                        item_ip = html_item.xpath(".//td[@data-title='IP']/text()")
-                        item_port = html_item.xpath(".//td[@data-title='PORT']/text()")
-                        item_type = html_item.xpath(".//td[@data-title='类型']/text()")
-                    except IOError:
-                        item_ip = html_item.xpath(".//td[0]/text()")
-                        item_port = html_item.xpath(".//td[1]/text()")
-                    
-                        
-                    self.test_ip(item_ip[0], item_port[0],item_type[0].lower())
+# *爬取网址
 
-    def test_ip(self, ip, port,type):
+
+def input_urls():
+    for item in get_proxy_arr:
+        print("正在爬取", item['url'])
         try:
-            telnetlib.Telnet(ip, port, timeout=2)
-            f=open('有效ip.txt','r',encoding='utf-8').read()
-            if ip not in f:
-                print("代理ip有效！",ip)
-                with open('有效ip.txt','a') as file_handle:   # .txt可以不自己新建,代码会自动新建
-                    file_handle.write(type+"://"+ip+":"+port)     # 写入
-                    file_handle.write('\n')         # 有时放在循环里面需要自动转行，不然会覆盖上一条数据
-            else :
-                print("已存在！")
+            for i in range(1, 3):
+                get_single(item, str(i))
+                print('爬取第'+str(i)+'页\r', end="")
+                time.sleep(3)
         except:
-            print("ip无效！")
+            print("异常退出")
+
+# *摘录代理IP
 
 
-get_proxy_ip().start_request()
+def get_single(item, index):  # 爬出单页上的所有代理ip
+    r = requests.get(item['url'] + index, headers=headers)
+    if r.status_code == 503:
+        print('由于爬取次数过多,你的Ip已经被封')
+        sys.exit(0)
+    content = etree.HTML(r.text)
+    if item['name'] == "kuaidaili":
+        ip = content.xpath(".//td[@data-title='IP']/text()")
+        duankou = content.xpath(".//td[@data-title='PORT']/text()")
+    elif item['name'] == "xicidaili":
+        ip = content.xpath('//table[@id="ip_list"]/tr/td[2]/text()')
+        duankou = content.xpath('//table[@id="ip_list"]/tr/td[3]/text()')
+    for i in range(0, len(ip)):
+        ip_list.append(ip[i]+":"+duankou[i])
+
+# *验证代理ip
+
+
+def verify_ips(ip, ip_valid_list):
+    poxie = "http://"+ip
+    proxies = {
+        'http': poxie,
+        'https': poxie
+    }
+    try:
+        requests.get('https://www.baidu.com', headers=headers,
+                     proxies=proxies, timeout=3)
+        ip_valid_list.append(ip)
+        print(ip, "有效")
+    except:
+        pass
+        # print("IP失效")
+
+
+
+if __name__ == "__main__":
+    print(
+        """
+        程序结束后会在当前文件夹生成一个ip_proxies_valid.txt文件，
+        防止ip被封,控制爬取频率
+        """
+    )
+    mlist = multiprocessing.Manager()
+    ip_valid_list = mlist.list()
+    input_urls()
+    print("总共爬取到"+str(len(ip_list))+"个ip,接下来准备验证ip有效性")
+    print("验证倒计时3s")
+    time.sleep(1)
+    print("验证倒计时2s")
+    time.sleep(1)
+    print("验证倒计时1s")
+    time.sleep(1)
+    print("开始验证!")
+    p = Pool(20)
+    for ip in ip_list:
+        p.apply_async(verify_ips, (ip, ip_valid_list))  # 多进程验证
+    p.close()
+    p.join()
+    f = open('ip_proxies_valid.txt', 'a')
+    for ip in ip_valid_list:  # 写入txt文件
+        f.write(ip)
+        if ip != ip_valid_list[-1]:
+            f.write('\n')
+    f.close()
+    print("完成")
