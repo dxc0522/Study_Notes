@@ -9,7 +9,6 @@ import re
 from multiprocessing import Pool
 import time
 from proxy_requst import use_proxy_requst
-import ffmpeg
 
 
 class Spider(object):
@@ -60,7 +59,8 @@ class Spider(object):
                     # todo 直接下载可用
                     # self.down_video(video_src, path+video_name+".mp4")
                     pool.apply_async(
-                        self.down_video, (video_src, path+video_name))
+                        self.down_video, (video_src, self.href +
+                                          href, path, video_name))
         pool.close()
         pool.join()
 
@@ -70,7 +70,7 @@ class Spider(object):
         if response.status_code == 200:
             print(video_name+"完成")
             try:
-                with open(video_name+".mp4", "wb") as f:
+                with open(path+video_name+".mp4", "wb") as f:
                     f.write(response.content)
                     f.flush()
             except:
